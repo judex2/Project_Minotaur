@@ -131,11 +131,12 @@ nonisolated enum SampleData {
     }
 
     static let nightwing = Labyrinth(
+        id: UUID(uuidString: "B1000000-0000-0000-0000-000000000001")!,
         name: "Nightwing Routine",
         ownerName: "Dane Cole",
         ownerHandle: "@nightwing",
         ownerAvatar: .asset("strength_coach_portrait"),
-        tagline: "Twelve corridors of pure structured discipline. Built for lifters who have stalled.",
+        tagline: "A focused strength and muscle-building plan for experienced lifters.",
         cover: .asset("hands_gripping_dumbbell"),
         weeks: 12,
         daysPerWeek: 4,
@@ -150,15 +151,16 @@ nonisolated enum SampleData {
     )
 
     static let titan = Labyrinth(
+        id: UUID(uuidString: "B1000000-0000-0000-0000-000000000002")!,
         name: "Titan Strength",
         ownerName: "Minotaur Labs",
         ownerHandle: "@minotaurlabs",
         ownerAvatar: nil,
-        tagline: "The official strength blueprint. Sixteen weeks of linear architecture.",
+        tagline: "Build strength steadily with a clear, progressive lifting plan.",
         cover: .asset("athlete_deadlift_barbell"),
         weeks: 16,
         daysPerWeek: 4,
-        level: "Elite",
+        level: "Advanced",
         category: "Strength",
         price: nil,
         memberCount: 12_400,
@@ -169,6 +171,7 @@ nonisolated enum SampleData {
     )
 
     static let gravity = Labyrinth(
+        id: UUID(uuidString: "B1000000-0000-0000-0000-000000000003")!,
         name: "Gravity Breaker",
         ownerName: "Gaia",
         ownerHandle: "@gaia",
@@ -188,6 +191,7 @@ nonisolated enum SampleData {
     )
 
     static let olympian = Labyrinth(
+        id: UUID(uuidString: "B1000000-0000-0000-0000-000000000004")!,
         name: "The Olympian",
         ownerName: "Zeus",
         ownerHandle: "@zeus",
@@ -207,6 +211,7 @@ nonisolated enum SampleData {
     )
 
     static let basement = Labyrinth(
+        id: UUID(uuidString: "B1000000-0000-0000-0000-000000000005")!,
         name: "Basement Built",
         ownerName: "Garage Lifter",
         ownerHandle: "@garagelifter",
@@ -226,6 +231,7 @@ nonisolated enum SampleData {
     )
 
     static let hyperDensity = Labyrinth(
+        id: UUID(uuidString: "B1000000-0000-0000-0000-000000000006")!,
         name: "Hyper-Density Phase",
         ownerName: user.name,
         ownerHandle: user.handle,
@@ -245,6 +251,7 @@ nonisolated enum SampleData {
     )
 
     static let thread = Labyrinth(
+        id: UUID(uuidString: "B1000000-0000-0000-0000-000000000007")!,
         name: "The Thread: Entry",
         ownerName: user.name,
         ownerHandle: user.handle,
@@ -263,10 +270,91 @@ nonisolated enum SampleData {
         days: genericDays(6, focus: ["Full Body A", "Full Body B", "Full Body C"])
     )
 
-    static let labyrinths: [Labyrinth] = [nightwing, titan, gravity, olympian, basement, hyperDensity, thread]
+    /// Clearly marked demonstration content, not a coach-reviewed production prescription.
+    static let foundations = Labyrinth(
+        id: UUID(uuidString: "B1000000-0000-0000-0000-000000000008")!,
+        name: "Full body foundations", ownerName: "Minotaur", ownerHandle: "@minotaur",
+        ownerAvatar: nil, tagline: "A friendly place to start. Simple movements, space to learn, and a rhythm you can make your own.",
+        cover: .asset("foundations_color"), weeks: 0, daysPerWeek: 3, level: "Beginner",
+        category: "Strength", price: nil, memberCount: 0, official: false, isPublic: true, dmEnabled: false,
+        days: [
+            ProgramDay(number: 1, weekday: "Day 1", title: "Your first full body session",
+                notes: "Demo workout. Start with a comfortable load and range of motion. Rest as needed.", estimatedMinutes: 25,
+                blocks: [
+                    ExerciseBlock(name: "Goblet squat", target: "Legs", sets: 2, reps: "8–10", restSeconds: 60, note: "Choose a load you can control comfortably."),
+                    ExerciseBlock(name: "Incline push-up", target: "Chest", sets: 2, reps: "8–10", restSeconds: 60, note: "Use a stable raised surface."),
+                    ExerciseBlock(name: "Dumbbell row", target: "Back", sets: 2, reps: "8 each side", restSeconds: 60, note: "Move slowly and stay supported.")
+                ]),
+            ProgramDay(number: 2, weekday: "Day 2", title: "Build your base",
+                notes: "Demo workout. Take a rest day between sessions if you need one.", estimatedMinutes: 25,
+                blocks: [
+                    ExerciseBlock(name: "Low step-up", target: "Legs", sets: 2, reps: "8 each side", restSeconds: 60, note: "Use a low, stable step."),
+                    ExerciseBlock(name: "Dumbbell floor press", target: "Chest", sets: 2, reps: "8–10", restSeconds: 60, note: nil),
+                    ExerciseBlock(name: "Glute bridge", target: "Glutes", sets: 2, reps: "10", restSeconds: 60, note: nil)
+                ]),
+            ProgramDay(number: 3, weekday: "Day 3", title: "Find your flow",
+                notes: "Demo workout. Repeat the sequence at a pace that works for you.", estimatedMinutes: 25,
+                blocks: [
+                    ExerciseBlock(name: "Bodyweight squat", target: "Legs", sets: 2, reps: "10", restSeconds: 60, note: nil),
+                    ExerciseBlock(name: "Dumbbell row", target: "Back", sets: 2, reps: "8 each side", restSeconds: 60, note: nil),
+                    ExerciseBlock(name: "Wall push-up", target: "Chest", sets: 2, reps: "10", restSeconds: 60, note: nil)
+                ])
+        ], format: .ongoing, goal: "Build muscle", equipment: "Gym"
+    )
+
+    static let labyrinths: [Labyrinth] = [foundations, nightwing, titan, gravity, olympian, basement, hyperDensity, thread]
+
+    /// Stable IDs let these discovery examples be safely added to existing local installs once.
+    static let featuredTransformationPosts: [Post] = [
+        Post(id: UUID(uuidString: "A1000000-0000-0000-0000-000000000001")!,
+             labyrinthID: nightwing.id,
+             authorName: "MARCUS_T",
+             authorAvatar: nil,
+             isFounder: false,
+             createdAt: Date().addingTimeInterval(-10_800),
+             text: "Day 84. The scale moved slowly, but the strength and consistency changed everything.",
+             tag: .progress,
+             photo: nil,
+             pair: ProgressPair(baseline: .asset("man_fitness_before_photo"), current: .asset("muscular_man_progress_after"), daysIn: 84),
+             likes: 1_284,
+             likedByMe: false,
+             commentCount: 96,
+             shares: 143,
+             pinned: false, discoveryConsent: true),
+        Post(id: UUID(uuidString: "A1000000-0000-0000-0000-000000000002")!,
+             labyrinthID: titan.id,
+             authorName: "JULES.PR",
+             authorAvatar: nil,
+             isFounder: false,
+             createdAt: Date().addingTimeInterval(-32_400),
+             text: "Sixteen weeks under the bar. Stronger posture, stronger lifts, stronger habits.",
+             tag: .progress,
+             photo: nil,
+             pair: ProgressPair(baseline: .asset("man_fitness_before_photo"), current: .asset("athlete_deadlift_barbell"), daysIn: 112),
+             likes: 938,
+             likedByMe: false,
+             commentCount: 71,
+             shares: 88,
+             pinned: false, discoveryConsent: true),
+        Post(id: UUID(uuidString: "A1000000-0000-0000-0000-000000000003")!,
+             labyrinthID: gravity.id,
+             authorName: "NOAH_MOVES",
+             authorAvatar: nil,
+             isFounder: false,
+             createdAt: Date().addingTimeInterval(-64_800),
+             text: "Started without a single pull-up. Finished the cycle owning sets of ten.",
+             tag: .progress,
+             photo: nil,
+             pair: ProgressPair(baseline: .asset("man_fitness_before_photo"), current: .asset("man_pullup_back"), daysIn: 70),
+             likes: 764,
+             likedByMe: false,
+             commentCount: 54,
+             shares: 61,
+             pinned: false, discoveryConsent: true)
+    ]
 
     static func seedPosts() -> [Post] {
-        [
+        featuredTransformationPosts + [
             Post(labyrinthID: nightwing.id,
                  authorName: "Dane [Founder]",
                  authorAvatar: .asset("strength_coach_portrait"),

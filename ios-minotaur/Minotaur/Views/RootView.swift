@@ -1,83 +1,35 @@
 import SwiftUI
 
-enum RootTab: String, CaseIterable, Hashable {
-    case home, explore, profile
-
-    var icon: String {
-        switch self {
-        case .home: return "house.fill"
-        case .explore: return "safari"
-        case .profile: return "person.fill"
-        }
-    }
-}
+enum RootTab: String, CaseIterable, Hashable { case home, explore, profile }
 
 struct RootView: View {
     @State private var state = AppState()
     @State private var tab: RootTab = .home
     @State private var baselineTarget: Labyrinth?
+    @AppStorage("appearance") private var appearance = "System"
+    @AppStorage("completedOrientation") private var completedOrientation = false
+    @State private var showOrientation = false
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Ink.canvas.ignoresSafeArea()
-
-            Group {
-                switch tab {
-                case .home: HomeView()
-                case .explore: ExploreView()
-                case .profile: ProfileView()
-                }
-            }
-            .environment(state)
-            .transition(.opacity)
-
-            TabBar(selection: $tab)
+        TabView(selection: $tab) {
+            HomeView(onExplore: { tab = .explore }).tabItem { Label("Home", systemImage: "house") }.tag(RootTab.home)
+            ExploreView().tabItem { Label("Explore", systemImage: "safari") }.tag(RootTab.explore)
+            ProfileView().tabItem { Label("Profile", systemImage: "person.crop.circle") }.tag(RootTab.profile)
         }
-        .preferredColorScheme(.dark)
-        .tint(.white)
-        .onChange(of: state.baselinePrompt) { _, newValue in
-            baselineTarget = newValue
+        .environment(state)
+        .defaultAppStorage(ProcessInfo.processInfo.environment["MINOTAUR_TEST_STATE"].flatMap { UserDefaults(suiteName: $0) } ?? .standard)
+        .tint(Ink.signalSoft)
+        .preferredColorScheme(appearance == "Light" ? .light : appearance == "Dark" ? .dark : nil)
+        .onAppear { showOrientation = !completedOrientation }
+        .onChange(of: state.baselinePrompt) { _, value in baselineTarget = value }
+        .sheet(item: $baselineTarget, onDismiss: { state.baselinePrompt = nil }) { program in
+            BaselineCaptureView(labyrinth: program).environment(state).presentationBackground(Ink.canvas)
         }
-        .sheet(item: $baselineTarget) { labyrinth in
-            BaselineCaptureView(labyrinth: labyrinth)
-                .environment(state)
-                .presentationBackground(Ink.canvas)
+        .sheet(isPresented: $showOrientation) {
+            OrientationView {
+                completedOrientation = true
+                showOrientation = false
+            }.environment(state).interactiveDismissDisabled()
         }
     }
-}
-
-private struct TabBar: View {
-    @Binding var selection: RootTab
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(RootTab.allCases, id: \.self) { item in
-                Button {
-                    guard selection != item else { return }
-                    Haptics.soft()
-                    withAnimation(.easeOut(duration: 0.18)) { selection = item }
-                } label: {
-                    VStack(spacing: 6) {
-                        Image(systemName: item.icon)
-                            .font(.system(size: 15, weight: .semibold))
-                        Text(item.rawValue.uppercased())
-                            .font(.system(size: 9, weight: .black, design: .monospaced))
-                            .tracking(1.4)
-                    }
-                    .foregroundStyle(selection == item ? Color.black : Ink.muted)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 58)
-                    .background(selection == item ? Color.white : Color.clear)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .background(Color.black)
-        .overlay(alignment: .top) { Rectangle().fill(Ink.hairline).frame(height: 1) }
-    }
-}
-
-#Preview {
-    RootView()
 }

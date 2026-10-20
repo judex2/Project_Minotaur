@@ -16,8 +16,8 @@ struct BaselineCaptureView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 10) {
-                    MonoLabel(text: "Entry protocol", size: 10, color: Ink.faint, icon: "camera.metering.center.weighted")
-                    Display(text: "Mark Your Baseline", size: 26)
+                    MonoLabel(text: "Your starting point", size: 10, color: Ink.faint, icon: "camera.metering.center.weighted")
+                    Display(text: "Start your progress journal", size: 26)
                     Text("One photo, stored privately on this device. It stays hidden until you choose to pair it with a future progress post.")
                         .font(.system(size: 14))
                         .foregroundStyle(Ink.muted)
@@ -26,7 +26,7 @@ struct BaselineCaptureView: View {
 
                 if let photo {
                     MediaBox(ref: photo, height: 320)
-                        .overlay(Rectangle().strokeBorder(Ink.hairline, lineWidth: 1))
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
                         .overlay(alignment: .bottomLeading) { Chip(text: "Baseline · Day 0", inverted: true).padding(10) }
                 } else {
                     HStack(spacing: 8) {
@@ -49,7 +49,7 @@ struct BaselineCaptureView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "lock.shield")
                             .font(.system(size: 16, weight: .light))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Ink.text)
                         Text("Private by default. Nobody in \(labyrinth.name) can see this until you publish a paired update.")
                             .font(.system(size: 12))
                             .foregroundStyle(Ink.muted)
@@ -91,13 +91,13 @@ struct BaselineCaptureView: View {
         VStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 22, weight: .ultraLight))
-                .foregroundStyle(.white)
+                .foregroundStyle(Ink.text)
             MonoLabel(text: title, size: 9, color: Ink.muted)
         }
         .frame(maxWidth: .infinity)
         .frame(height: 150)
         .background(Ink.surface)
-        .overlay(Rectangle().strokeBorder(Ink.hairline, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 }
 
@@ -198,7 +198,7 @@ struct PhotoCaptureView: View {
             Image(systemName: icon)
                 .font(.system(size: 34, weight: .ultraLight))
                 .foregroundStyle(.white)
-            Display(text: title, size: 20)
+            Display(text: title, size: 20, color: .white)
             Text(body)
                 .font(.system(size: 13))
                 .multilineTextAlignment(.center)

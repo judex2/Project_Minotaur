@@ -8,17 +8,19 @@ struct ComposePostView: View {
 
     let labyrinth: Labyrinth
     var prefill: String = ""
+    var initialTag: PostTag = .update
 
+    @State private var initialized = false
     @State private var text: String = ""
     @State private var tag: PostTag = .update
     @State private var photo: PhotoRef?
-    @State private var sharePublicly = true
+    @State private var sharePublicly = false
     @State private var pickerItem: PhotosPickerItem?
     @State private var showCamera = false
 
     private var baseline: PhotoRef? { state.membership(for: labyrinth)?.baseline }
     private var daysIn: Int { state.membership(for: labyrinth)?.daysIn ?? 1 }
-    private var willPair: Bool { sharePublicly && photo != nil && baseline != nil }
+    private var willPair: Bool { tag == .progress && photo != nil && baseline != nil }
 
     var body: some View {
         ScrollView {
@@ -46,7 +48,7 @@ struct ComposePostView: View {
         }
         .scrollIndicators(.hidden)
         .background(Ink.canvas)
-        .onAppear { if text.isEmpty { text = prefill } }
+        .onAppear { if !initialized { text = prefill; tag = initialTag; initialized = true } }
         .onChange(of: pickerItem) { _, item in
             guard let item else { return }
             Task {
@@ -68,7 +70,7 @@ struct ComposePostView: View {
         HStack {
             VStack(alignment: .leading, spacing: 6) {
                 MonoLabel(text: labyrinth.name, size: 9, color: Ink.faint)
-                Display(text: "New Signal", size: 24)
+                Display(text: "Share an update", size: 24)
             }
             Spacer()
             Button {
@@ -90,7 +92,7 @@ struct ComposePostView: View {
                 MonoLabel(text: "Message", size: 9, color: Ink.faint)
                 TextEditor(text: $text)
                     .font(.system(size: 15))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Ink.text)
                     .scrollContentBackground(.hidden)
                     .frame(height: 120)
                     .overlay(alignment: .topLeading) {
@@ -111,19 +113,19 @@ struct ComposePostView: View {
         VStack(alignment: .leading, spacing: 10) {
             MonoLabel(text: "Tag", size: 9, color: Ink.faint)
             HStack(spacing: 8) {
-                ForEach([PostTag.update, .question], id: \.self) { item in
+                ForEach([PostTag.update, .question, .progress], id: \.self) { item in
                     Button {
                         Haptics.soft()
                         withAnimation(.easeOut(duration: 0.15)) { tag = item }
                     } label: {
-                        Text(item.label.uppercased())
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .tracking(1.4)
-                            .foregroundStyle(tag == item ? .black : Ink.muted)
+                        Text(item.label)
+                            .font(.subheadline.weight(.semibold))
+
+                            .foregroundStyle(tag == item ? .white : Ink.muted)
                             .padding(.horizontal, 16)
-                            .frame(height: 38)
-                            .background(tag == item ? Color.white : Color.clear)
-                            .overlay(Rectangle().strokeBorder(tag == item ? Color.clear : Ink.hairline, lineWidth: 1))
+                            .frame(minHeight: 44)
+                            .background(tag == item ? Ink.signal : Ink.raised, in: Capsule())
+
                     }
                     .buttonStyle(PressStyle())
                 }
@@ -140,7 +142,7 @@ struct ComposePostView: View {
             MonoLabel(text: "Attachment", size: 9, color: Ink.faint)
             if let photo {
                 MediaBox(ref: photo, height: 220)
-                    .overlay(Rectangle().strokeBorder(Ink.hairline, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
                     .overlay(alignment: .topTrailing) {
                         Button {
                             Haptics.soft()
@@ -178,13 +180,13 @@ struct ComposePostView: View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .light))
-                .foregroundStyle(.white)
+                .foregroundStyle(Ink.text)
             MonoLabel(text: title, size: 9, color: Ink.muted)
         }
         .frame(maxWidth: .infinity)
         .frame(height: 96)
         .background(Ink.surface)
-        .overlay(Rectangle().strokeBorder(Ink.hairline, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     private var pairingSection: some View {
@@ -192,18 +194,16 @@ struct ComposePostView: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     VStack(alignment: .leading, spacing: 5) {
-                        MonoLabel(text: "Share publicly", size: 10, color: .white)
-                        Text(baseline == nil
-                             ? "No baseline stored for this labyrinth."
-                             : "Pairs with your baseline photo automatically.")
+                        MonoLabel(text: "Share publicly", size: 10, color: Ink.text)
+                        Text(labyrinth.isPublic ? "Allow this photo to appear in discovery, outside this community. Off by default." : "This is a private Labyrinth. Your post stays inside its community.")
                             .font(.system(size: 12))
                             .foregroundStyle(Ink.faint)
                     }
                     Spacer()
-                    Toggle("", isOn: $sharePublicly)
+                    Toggle("Allow public discovery", isOn: $sharePublicly)
                         .labelsHidden()
-                        .tint(.white)
-                        .disabled(baseline == nil)
+                        .tint(Ink.signal)
+                        .disabled(!labyrinth.isPublic)
                 }
 
                 if willPair, let baseline, let photo {
@@ -213,7 +213,7 @@ struct ComposePostView: View {
                         MediaBox(ref: photo, height: 150)
                             .overlay(alignment: .bottomLeading) { Chip(text: "Day \(daysIn)", inverted: true).padding(6) }
                     }
-                    .overlay(Rectangle().strokeBorder(Ink.hairline, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
                     MonoLabel(text: "\(daysIn) days inside this labyrinth", size: 9, color: Ink.faint, icon: "calendar")
                 }
             }

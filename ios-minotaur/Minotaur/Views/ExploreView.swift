@@ -2,154 +2,168 @@ import SwiftUI
 
 struct ExploreView: View {
     @Environment(AppState.self) private var state
-    @State private var path: [Labyrinth] = []
-    @State private var query: String = ""
-    @State private var category: String = "All"
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var query = ""
+    @State private var level = "All"
+    @State private var equipment = "All"
+    @State private var category = "All"
+    @State private var goal = "All"
+    @State private var duration = "All"
+    @State private var freeOnly = false
+    @State private var maxDays = 7
+    @State private var showFilters = false
+    @State private var discovery = "Plans"
 
-    private var categories: [String] {
-        ["All"] + Array(Set(state.labyrinths.map(\.category))).sorted()
+    private var searchText: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var creatorResults: [CreatorProfile] {
+        state.creators.filter { creator in
+            (creator.id != state.user.handle.lowercased() || !searchText.isEmpty) &&
+            (creator.matches(searchText) || state.programs(by: creator.handle).contains { $0.matchesDiscovery(searchText) })
+        }
+    }
+    private var communities: [Labyrinth] {
+        state.publicPrograms.filter { $0.matchesDiscovery(searchText) }
+            .sorted { $0.memberCount > $1.memberCount }
     }
 
     private var results: [Labyrinth] {
-        state.labyrinths.filter { labyrinth in
-            let matchesCategory = category == "All" || labyrinth.category == category
-            let matchesQuery = query.isEmpty
-                || labyrinth.name.localizedStandardContains(query)
-                || labyrinth.ownerHandle.localizedStandardContains(query)
-            return matchesCategory && matchesQuery
-        }
+        state.labyrinths.filter { program in
+            program.isPublic && program.isPersonal != true &&
+            program.matchesDiscovery(searchText) &&
+            (goal == "All" || (program.goal ?? inferredGoal(program)) == goal) &&
+            (duration == "All" || (duration == "Ongoing" ? program.programFormat == .ongoing : program.programFormat == .fixed)) &&
+            (level == "All" || program.level.localizedCaseInsensitiveContains(level)) &&
+            (category == "All" || program.category.localizedCaseInsensitiveContains(category)) &&
+            (equipment == "All" || (program.equipment ?? (program.category == "Calisthenics" ? "Bodyweight" : "Gym")) == equipment) &&
+            (!freeOnly || program.price == nil) && (program.programFormat == .ongoing || program.daysPerWeek <= maxDays)
+        }.sorted { score($0) > score($1) }
+    }
+    private var filterCount: Int {
+        [goal != "All", duration != "All", level != "All", equipment != "All", category != "All", freeOnly, maxDays < 7].filter { $0 }.count
+    }
+    private func inferredGoal(_ program: Labyrinth) -> String {
+        program.category == "Strength" ? "Get stronger" : program.category == "Hypertrophy" ? "Build muscle" : program.category == "Calisthenics" ? "Calisthenics" : "General fitness"
+    }
+    private func score(_ program: Labyrinth) -> Int {
+        (program.level == state.preferences.experience ? 2 : 0) +
+        (program.programFormat == .fixed && program.daysPerWeek == state.preferences.daysPerWeek ? 1 : 0) +
+        ((program.goal ?? inferredGoal(program)) == state.preferences.goal ? 3 : 0)
     }
 
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 30) {
-                    search
-                    chips
-                    forYou
-                    trendingRail
-                    Color.clear.frame(height: 80)
-                }
-                .padding(.top, 14)
-            }
-            .scrollIndicators(.hidden)
-            .background(Ink.canvas)
-            .navigationDestination(for: Labyrinth.self) { LabyrinthDetailView(labyrinthID: $0.id) }
-        }
-        .tint(.white)
-    }
-
-    private var search: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(Ink.muted)
-            TextField("", text: $query, prompt: Text("FIND YOUR LABYRINTH...")
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundColor(Ink.faint))
-                .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white)
-                .autocorrectionDisabled()
-        }
-        .padding(.horizontal, 14)
-        .frame(height: 46)
-        .background(Ink.surface)
-        .overlay(Rectangle().strokeBorder(Ink.hairline, lineWidth: 1))
-        .padding(.horizontal, 20)
-    }
-
-    private var chips: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 8) {
-                ForEach(categories, id: \.self) { item in
-                    Button {
-                        Haptics.soft()
-                        withAnimation(.easeOut(duration: 0.15)) { category = item }
-                    } label: {
-                        Text(item.uppercased())
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .tracking(1.4)
-                            .foregroundStyle(category == item ? .black : Ink.muted)
-                            .padding(.horizontal, 14)
-                            .frame(height: 34)
-                            .background(category == item ? Color.white : Color.clear)
-                            .overlay(Rectangle().strokeBorder(category == item ? Color.clear : Ink.hairline, lineWidth: 1))
-                    }
-                    .buttonStyle(PressStyle())
-                }
-            }
-        }
-        .scrollIndicators(.hidden)
-        .contentMargins(.horizontal, 20, for: .scrollContent)
-    }
-
-    private var forYou: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "For You", trailing: "\(results.count) paths")
-                .padding(.horizontal, 20)
-            VStack(spacing: 14) {
-                ForEach(results.prefix(3)) { labyrinth in
-                    Button {
-                        Haptics.tap()
-                        path.append(labyrinth)
-                    } label: {
-                        CoverCard(labyrinth: labyrinth)
-                    }
-                    .buttonStyle(PressStyle())
-                }
-                if results.isEmpty {
-                    Panel {
-                        Text("Nothing matches that search.")
-                            .font(.system(size: 14))
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Find your rhythm.").font(TrainingType.display).tracking(-0.9)
+                        if !typeSize.isAccessibilitySize { Text("Find your plan. Meet your people.")
                             .foregroundStyle(Ink.muted)
+                        }
+                        if discovery == "Plans" {
+                        Button("Match my preferences", systemImage: "sparkle.magnifyingglass") {
+                            goal = state.preferences.goal
+                            level = state.preferences.experience
+                            equipment = state.preferences.equipment == "Any" ? "All" : state.preferences.equipment
+                            maxDays = state.preferences.daysPerWeek
+                            showFilters = true
+                        }.font(.subheadline.weight(.semibold)).padding(.top, 8)
+                        }
                     }
-                }
-            }
-            .padding(.horizontal, 20)
-        }
-    }
-
-    private var trendingRail: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Display(text: "Trending This Week", size: 19)
-                Spacer()
-                Image(systemName: "chart.line.uptrend.xyaxis")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Ink.muted)
-            }
-            .padding(.horizontal, 20)
-
-            ScrollView(.horizontal) {
-                HStack(spacing: 12) {
-                    ForEach(state.labyrinths.sorted { $0.memberCount > $1.memberCount }) { labyrinth in
-                        Button {
-                            Haptics.tap()
-                            path.append(labyrinth)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 0) {
-                                MediaBox(ref: labyrinth.cover, height: 150, dim: 0.2)
+                    if typeSize.isAccessibilitySize {
+                        scopePicker.pickerStyle(.menu)
+                    } else {
+                        scopePicker.pickerStyle(.segmented)
+                    }
+                    if discovery == "Creators" {
+                        SectionTitle(title: "People to train with", subtitle: typeSize.isAccessibilitySize ? nil : "Find a familiar name or discover a new approach.")
+                        Text("Demo creators")
+                            .font(.caption).foregroundStyle(Ink.muted)
+                        if creatorResults.isEmpty {
+                            EmptyState(icon: "person.crop.circle", title: "No creators found", message: "Try a name, handle, or training specialty.")
+                        }
+                        ForEach(creatorResults) { creator in
+                            NavigationLink { CreatorProfileView(creator: creator) } label: { CreatorRow(creator: creator) }
+                                .buttonStyle(.plain).accessibilityIdentifier("creator-\(creator.id)")
+                        }
+                    } else if discovery == "Communities" {
+                        SectionTitle(title: "A shared rhythm", subtitle: "Find people following a path like yours.")
+                        Text("Demo communities · sample member counts").font(.caption).foregroundStyle(Ink.muted)
+                        if communities.isEmpty {
+                            EmptyState(icon: "person.2", title: "No communities found", message: "Try another creator or program name.")
+                        }
+                        ForEach(communities) { program in
+                            NavigationLink { LabyrinthDetailView(labyrinthID: program.id, initialSection: 1) } label: {
+                                CommunityDiscoveryRow(program: program)
+                            }.buttonStyle(PressStyle())
+                        }
+                    } else {
+                    HStack {
+                        Text("\(results.count) plans to explore").font(.subheadline).foregroundStyle(Ink.muted)
+                        Spacer()
+                        Button { showFilters = true } label: {
+                            Label(filterCount == 0 ? "Filters" : "Filters · \(filterCount)", systemImage: "slider.horizontal.3")
+                                .font(.subheadline.weight(.semibold)).padding(.vertical, 10).padding(.horizontal, 14)
+                                .background(Ink.surface, in: RoutePanelShape(cut: 8))
+                        }.accessibilityIdentifier("exploreFilters")
+                    }
+                    if results.isEmpty {
+                        EmptyState(icon: "magnifyingglass", title: "A fresh search?", message: "Try fewer filters or another exercise or goal.")
+                        Button("Clear filters") { reset(); query = "" }
+                    } else {
+                        ForEach(results) { program in
+                            VStack(alignment: .leading, spacing: 10) {
+                            NavigationLink { LabyrinthDetailView(labyrinthID: program.id) } label: {
                                 VStack(alignment: .leading, spacing: 8) {
-                                    MonoLabel(text: "Program by \(labyrinth.ownerHandle)", size: 9, color: Ink.faint)
-                                    Display(text: labyrinth.name, size: 16)
-                                    HStack(spacing: 14) {
-                                        MonoLabel(text: "\(labyrinth.weeks) weeks", size: 9, color: Ink.faint, icon: "clock")
-                                        MonoLabel(text: labyrinth.level, size: 9, color: Ink.faint, icon: "bolt.fill")
+                                    ProgramCover(program: program)
+                                    if score(program) >= 3 {
+                                        Label((program.goal ?? inferredGoal(program)) == state.preferences.goal ? "Fits your \(state.preferences.goal.lowercased()) goal" : "Fits your experience and weekly rhythm", systemImage: "checkmark.circle")
+                                            .font(.caption).foregroundStyle(Ink.blue)
                                     }
                                 }
-                                .padding(12)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }.buttonStyle(PressStyle())
+                            if let creator = state.creator(for: program) {
+                                NavigationLink { CreatorProfileView(creator: creator) } label: { CreatorByline(creator: creator) }.buttonStyle(.plain)
                             }
-                            .frame(width: 250)
-                            .background(Ink.surface)
-                            .overlay(Rectangle().strokeBorder(Ink.hairline, lineWidth: 1))
+                            }
                         }
-                        .buttonStyle(PressStyle())
                     }
-                }
+                    }
+                }.padding(20)
             }
-            .scrollIndicators(.hidden)
-            .contentMargins(.horizontal, 20, for: .scrollContent)
+            .background(ArchitecturalCanvas()).foregroundStyle(Ink.text)
+            .navigationTitle("Explore").navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $query, prompt: "Creator, goal, or plan")
+            .sheet(isPresented: $showFilters) {
+                NavigationStack {
+                    Form {
+                        Section("Find your fit") {
+                            Picker("Goal", selection: $goal) { ForEach(["All", "Build muscle", "Get stronger", "Calisthenics", "General fitness"], id: \.self) { Text($0) } }
+                            Picker("Length", selection: $duration) { ForEach(["All", "Fixed", "Ongoing"], id: \.self) { Text($0) } }
+                            Picker("Experience", selection: $level) {
+                                ForEach(["All", "Beginner", "Intermediate", "Advanced"], id: \.self) { Text($0) }
+                            }
+                            Picker("Training style", selection: $category) {
+                                ForEach(["All", "Strength", "Hypertrophy", "Calisthenics", "Hybrid"], id: \.self) { Text($0) }
+                            }
+                            Picker("Equipment", selection: $equipment) {
+                                ForEach(["All", "Gym", "Bodyweight"], id: \.self) { Text($0) }
+                            }
+                            Stepper("Up to \(maxDays) days a week", value: $maxDays, in: 1...7)
+                            Toggle("Free plans only", isOn: $freeOnly)
+                        }
+                        Button("Reset filters") { reset() }
+                    }.navigationTitle("Your kind of training").navigationBarTitleDisplayMode(.inline)
+                        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Show \(results.count) plans") { showFilters = false } } }
+                }.presentationDetents([.medium, .large])
+            }
         }
     }
+    private var scopePicker: some View {
+        Picker("Explore", selection: $discovery) {
+            Text("Plans").tag("Plans")
+            Text("Creators").tag("Creators")
+            Text("Communities").tag("Communities")
+        }.accessibilityIdentifier("discoveryScope")
+    }
+    private func reset() { goal = "All"; duration = "All"; level = "All"; equipment = "All"; category = "All"; freeOnly = false; maxDays = 7 }
 }

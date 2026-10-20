@@ -2,154 +2,151 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(AppState.self) private var state
+    @Environment(\.dynamicTypeSize) private var typeSize
+    var onExplore: () -> Void = {}
     @State private var path: [Labyrinth] = []
+    @State private var showBuilder = false
+    @State private var showSchedule = false
+    @State private var showWorkout = false
+    @State private var glassScrollOffset: CGFloat = 0
 
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 34) {
-                    yourLabyrinths
-                    if let active = state.activeLabyrinth { todayCard(active) }
-                    trending
-                    Color.clear.frame(height: 80)
-                }
-                .padding(.top, 12)
-            }
-            .scrollIndicators(.hidden)
-            .background(Ink.canvas)
-            .safeAreaInset(edge: .top) { topBar }
-            .navigationDestination(for: Labyrinth.self) { LabyrinthDetailView(labyrinthID: $0.id) }
-        }
-        .tint(.white)
-    }
-
-    private var topBar: some View {
-        HStack {
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Ink.muted)
-            Spacer()
-            Text("MINOTAUR")
-                .font(.system(size: 16, weight: .black))
-                .tracking(4)
-                .foregroundStyle(.white)
-            Spacer()
-            Image(systemName: "bell")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Ink.muted)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-        .background(Color.black)
-        .overlay(alignment: .bottom) { Rectangle().fill(Ink.hairline).frame(height: 1) }
-    }
-
-    @ViewBuilder private var yourLabyrinths: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Display(text: "Your Labyrinths", size: 20)
-                Spacer()
-                MonoLabel(text: "View all", size: 9, color: Ink.faint)
-            }
-            .padding(.horizontal, 20)
-
-            if state.joined.isEmpty {
-                Panel {
-                    VStack(alignment: .leading, spacing: 12) {
-                        MonoLabel(text: "No active path", size: 10)
-                        Text("You have not entered a labyrinth yet. Explore the archive and enlist.")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Ink.muted)
-                    }
-                }
-                .padding(.horizontal, 20)
-            } else {
-                ScrollView(.horizontal) {
-                    HStack(spacing: 12) {
-                        ForEach(state.joined) { labyrinth in
-                            Button {
-                                Haptics.tap()
-                                path.append(labyrinth)
-                            } label: {
-                                RailCard(labyrinth: labyrinth, progress: state.progress(in: labyrinth))
-                            }
-                            .buttonStyle(PressStyle())
+                VStack(alignment: .leading, spacing: 28) {
+                    BrandHeader()
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(state.library.isEmpty ? "Your next move." : "Make it your time.").font(TrainingType.display).tracking(-0.9)
+                        if !typeSize.isAccessibilitySize {
+                            Text("A little stronger. A little more you.").font(.body).foregroundStyle(Ink.muted)
                         }
                     }
-                }
-                .scrollIndicators(.hidden)
-                .contentMargins(.horizontal, 20, for: .scrollContent)
-            }
-        }
-    }
-
-    @ViewBuilder private func todayCard(_ labyrinth: Labyrinth) -> some View {
-        if let day = state.today(in: labyrinth) {
-            Panel(padding: 18) {
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack {
-                        MonoLabel(text: day.header, size: 10, color: Ink.muted)
-                        Spacer()
-                        Image(systemName: "pencil")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Ink.faint)
+                    if !state.library.isEmpty { today }
+                    VStack(spacing: 10) {
+                        if state.library.isEmpty {
+                        action("Find a plan", subtitle: "Training that fits your goals", icon: "safari", primary: true, action: onExplore)
+                            .accessibilityIdentifier("findPlan")
+                        action("Build my workout", subtitle: "Your exercises. Your pace.", icon: "plus", primary: false) { showBuilder = true }
+                            .accessibilityIdentifier("buildWorkout")
+                        } else {
+                            ViewThatFits(in: .horizontal) {
+                                HStack(spacing: 12) { quickActions }
+                                VStack(spacing: 12) { quickActions }
+                            }.font(.subheadline.weight(.semibold)).buttonStyle(PressStyle())
+                        }
                     }
-                    Display(text: labyrinth.name, size: 23)
-
-                    VStack(spacing: 0) {
-                        ForEach(Array(day.blocks.prefix(3).enumerated()), id: \.element.id) { index, block in
-                            HStack(alignment: .top) {
-                                if index == 0 {
-                                    Rectangle().fill(Color.white).frame(width: 2, height: 30)
-                                        .padding(.trailing, 8)
-                                }
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(block.name.uppercased())
-                                        .font(.system(size: 13, weight: .black))
-                                        .tracking(0.6)
-                                        .foregroundStyle(.white)
-                                    Text("Target: \(block.target)")
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(Ink.faint)
-                                }
+                    if state.library.isEmpty { today }
+                    if !state.library.isEmpty {
+                        VStack(alignment: .leading, spacing: 14) {
+                            HStack {
+                                SectionTitle(title: "Your Labyrinths")
                                 Spacer()
-                                Text("\(block.sets) x \(block.reps)")
-                                    .font(.system(size: 13, weight: .bold, design: .monospaced))
-                                    .foregroundStyle(.white)
+                                NavigationLink { TrainingLibraryView() } label: { Text("See all").font(.subheadline.weight(.semibold)).frame(minHeight: 44) }
+                                    .accessibilityIdentifier("allTraining")
                             }
-                            .padding(.vertical, 10)
-                            if index < min(2, day.blocks.count - 1) {
-                                Rectangle().fill(Ink.hairline).frame(height: 1)
+                            ForEach(state.library.prefix(4)) { program in
+                                Button { path.append(program) } label: { ProgramRow(program: program) }
+                                    .buttonStyle(PressStyle())
                             }
                         }
                     }
-
-                    SlabButton(title: "Enter Labyrinth") {
-                        path.append(labyrinth)
+                    if !state.hypedTransformations.isEmpty {
+                        VStack(alignment: .leading, spacing: 14) {
+                            SectionTitle(title: "Progress worth sharing", subtitle: "Real people. Shared momentum.")
+                            ForEach(state.hypedTransformations.prefix(2)) { post in
+                                if let program = state.labyrinths.first(where: { $0.id == post.labyrinthID }) {
+                                    Button { path.append(program) } label: {
+                                        TransformationCard(post: post, labyrinth: program, width: nil)
+                                    }.buttonStyle(PressStyle())
+                                }
+                            }
+                        }
                     }
                 }
+                .padding(20).padding(.bottom, 20)
             }
-            .padding(.horizontal, 20)
-            .overlay(alignment: .bottom) {
-                MonoLabel(text: "See more history", size: 9, color: Ink.faint)
-                    .offset(y: 24)
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                ((geometry.contentOffset.y + geometry.contentInsets.top) * 2).rounded() / 2
+            } action: { _, offset in
+                glassScrollOffset = offset
+            }
+            .background(ArchitecturalCanvas()).foregroundStyle(Ink.text)
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: Labyrinth.self) { LabyrinthDetailView(labyrinthID: $0.id) }
+            .sheet(isPresented: $showSchedule) { ScheduleEditor().environment(state) }
+            .fullScreenCover(isPresented: $showBuilder) {
+                LabyrinthBuilderView(personal: true) { program in
+                    state.createLabyrinth(program); showBuilder = false; path.append(program)
+                }.environment(state)
+            }
+            .fullScreenCover(isPresented: $showWorkout) {
+                if let program = state.scheduledProgram, let day = state.scheduledDay {
+                    ActiveWorkoutView(labyrinth: program, day: day).environment(state)
+                }
             }
         }
     }
 
-    private var trending: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "Trending", rule: false)
-                .padding(.horizontal, 20)
-            VStack(spacing: 12) {
-                ForEach(state.labyrinths.filter { !state.isMember(of: $0) }.prefix(4)) { labyrinth in
-                    TrendingCard(labyrinth: labyrinth, joined: false) {
-                        path.append(labyrinth)
-                    }
+    @ViewBuilder private var quickActions: some View {
+        Button(action: onExplore) { Label("Find a plan", systemImage: "safari").frame(maxWidth: .infinity, minHeight: 50).padding(.horizontal, 12).background(Ink.surface, in: RoundedRectangle(cornerRadius: 16)) }
+            .accessibilityIdentifier("findPlan")
+        Button { showBuilder = true } label: { Label("Build workout", systemImage: "plus").frame(maxWidth: .infinity, minHeight: 50).padding(.horizontal, 12).background(Ink.surface, in: RoundedRectangle(cornerRadius: 16)) }
+            .accessibilityIdentifier("buildWorkout")
+    }
+
+    private func action(_ title: String, subtitle: String, icon: String, primary: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                if !typeSize.isAccessibilitySize { Image(systemName: icon).font(.title2.weight(.semibold)).frame(width: 30) }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).font(.headline)
+                    Text(subtitle).font(.subheadline).opacity(primary ? 0.92 : 0.75)
                 }
+                Spacer(minLength: 4)
+                if !typeSize.isAccessibilitySize { Image(systemName: "arrow.up.right").font(.body.weight(.semibold)) }
+            }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
+                .foregroundStyle(primary ? .white : Ink.text)
+                .background(primary ? Ink.signal : Ink.surface, in: RoutePanelShape(cut: 14))
+        }.buttonStyle(PressStyle())
+    }
+
+    private var today: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) { todayHeading }
+            } else {
+                HStack { todayHeading }
             }
-            .padding(.horizontal, 20)
+            if let program = state.scheduledProgram, let day = state.scheduledDay {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(alignment: .top, spacing: 14) {
+                        if !typeSize.isAccessibilitySize {
+                        Image(systemName: day.isRest ? "leaf" : "figure.strengthtraining.traditional")
+                            .font(.title2).foregroundStyle(Ink.signalSoft)
+                            .frame(width: 48, height: 48).background(Ink.signalWash, in: RoutePanelShape(cut: 9))
+                        }
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(day.title).font(TrainingType.title)
+                            Text(program.name).font(.subheadline).foregroundStyle(Ink.muted)
+                            Text(day.isRest ? "Recovery is part of the plan." : "\(day.exerciseSummary) · About \(day.estimatedMinutes) min")
+                                .font(.caption).foregroundStyle(Ink.muted)
+                        }
+                    }
+                    if !day.isRest {
+                        SlabButton(title: "Start workout", accent: true) { showWorkout = true }
+                            .accessibilityIdentifier("startToday")
+                    }
+                    TrainingPath(program: program)
+                }.padding(20).modifier(TodayGlass(scrollOffset: glassScrollOffset))
+            } else {
+                EmptyState(icon: "sun.max", title: state.todaySlot != nil ? "Room to recover" : "Make room for movement",
+                           message: state.todaySlot != nil ? "You’ve planned a rest day. Your next session will be here when you’re ready." : "Find a plan or build a workout. Your next session will appear here.")
+            }
         }
-        .padding(.top, 12)
+    }
+    @ViewBuilder private var todayHeading: some View {
+        SectionTitle(title: "Today")
+        if !typeSize.isAccessibilitySize { Spacer() }
+        Button("Schedule") { showSchedule = true }.font(.subheadline.weight(.semibold)).frame(minHeight: 44)
     }
 }

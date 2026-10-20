@@ -14,7 +14,7 @@ struct DirectThreadView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 12) {
-                        MonoLabel(text: "Private line · only \(labyrinth.ownerHandle) can read this",
+                        MonoLabel(text: "Private thread preview · stored only on this device",
                                   size: 9,
                                   color: Ink.faint,
                                   icon: "lock")
@@ -42,12 +42,12 @@ struct DirectThreadView: View {
         HStack(spacing: 12) {
             MediaBox(ref: labyrinth.ownerAvatar, height: 38)
                 .frame(width: 38)
-                .overlay(Rectangle().strokeBorder(Ink.hairline, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
             VStack(alignment: .leading, spacing: 3) {
-                Text(labyrinth.ownerName.uppercased())
+                Text(labyrinth.ownerName)
                     .font(.system(size: 14, weight: .black))
                     .tracking(1)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Ink.text)
                 MonoLabel(text: labyrinth.ownerHandle, size: 9, color: Ink.faint)
             }
             Spacer()
@@ -64,7 +64,7 @@ struct DirectThreadView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color.black)
+        .background(Ink.canvas)
         .overlay(alignment: .bottom) { Rectangle().fill(Ink.hairline).frame(height: 1) }
     }
 
@@ -74,15 +74,15 @@ struct DirectThreadView: View {
             VStack(alignment: message.fromMe ? .trailing : .leading, spacing: 6) {
                 Text(message.text)
                     .font(.system(size: 14))
-                    .foregroundStyle(message.fromMe ? .black : .white)
+                    .foregroundStyle(message.fromMe ? .white : Ink.text)
                     .lineSpacing(3)
                 MonoLabel(text: message.sentAt.shortAgo,
                           size: 8,
-                          color: message.fromMe ? Color.black.opacity(0.5) : Ink.faint)
+                          color: message.fromMe ? .white.opacity(0.85) : Ink.faint)
             }
             .padding(14)
-            .background(message.fromMe ? Color.white : Ink.surface)
-            .overlay(Rectangle().strokeBorder(message.fromMe ? Color.clear : Ink.hairline, lineWidth: 1))
+            .background(message.fromMe ? Ink.blue : Ink.surface, in: RoundedRectangle(cornerRadius: 18))
+
             if !message.fromMe { Spacer(minLength: 50) }
         }
     }
@@ -91,16 +91,16 @@ struct DirectThreadView: View {
         VStack(spacing: 0) {
             Rectangle().fill(Ink.hairline).frame(height: 1)
             HStack(spacing: 10) {
-                TextField("", text: $draft, prompt: Text("WRITE A MESSAGE…")
+                TextField("", text: $draft, prompt: Text("Write a message…")
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundColor(Ink.faint), axis: .vertical)
                     .font(.system(size: 14))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Ink.text)
                     .lineLimit(1...4)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .background(Ink.surface)
-                    .overlay(Rectangle().strokeBorder(Ink.hairline, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
 
                 Button {
                     let value = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -111,14 +111,15 @@ struct DirectThreadView: View {
                 } label: {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(.black)
+                        .foregroundStyle(.white)
                         .frame(width: 48, height: 48)
-                        .background(Color.white)
+                        .background(Ink.signal, in: Circle())
                 }
-                .buttonStyle(PressStyle())
+                .buttonStyle(PressStyle()).accessibilityLabel("Send message")
+                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .padding(16)
         }
-        .background(Color.black)
+        .background(Ink.canvas)
     }
 }
